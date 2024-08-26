@@ -1,24 +1,46 @@
 package structs
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"sync"
+)
 
-type AllRooms map[string]Room
+var (
+	AllRooms map[string]*Room
+	roomMutex sync.RWMutex
+)
 
-func (all *AllRooms) AddRoom(roomId string) error {
-	if all == nil {
-		return errors.New("nil pointer, all rooms is not accessible here")
-	}
-
-	(*all)[roomId] = Room{}
-	return nil
+func init(){
+	AllRooms = make(map[string]*Room)
 }
 
-func (all *AllRooms) DeleteRoom(roomId string) error {
-	if all == nil {
-		return errors.New("nil pointer, all rooms is not accessible here")
+func AddRoom(roomId string) *Room {
+	fmt.Printf("adding %s room to all rooms \n", roomId)
+
+	roomMutex.Lock()
+	defer roomMutex.Unlock()
+	
+	newRoom := Room{
+		RoomId:  roomId,
+		Clients: make(map[string]Client),
 	}
 
-	delete(*all, roomId)
+	AllRooms[roomId] = &newRoom
+	return &newRoom
+}
+
+func GetRoom(roomId string) (*Room, error) {
+	if AllRooms[roomId] == nil {
+		return nil, errors.New("error getting room, that room doesn't exist or is nil")
+	}
+	return AllRooms[roomId], nil
+}
+
+func DeleteRoom(roomId string) error {
+	roomMutex.Lock()
+	defer roomMutex.Unlock()
+	delete(AllRooms, roomId)
 
 	return nil
 }
