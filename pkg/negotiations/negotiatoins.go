@@ -3,17 +3,36 @@ package negotiations
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/MaxRubel/groupdoodles-ws/pkg/structs"
 	"github.com/gorilla/websocket"
 )
 
-type OutgoingOffer struct{
+type OutgoingMessage struct{
 	Type     string      `json:"type"`
 	To       string      `json:"to"`
 	From     string      `json:"from"`
 	Room     string      `json:"room"`
 	Data     interface{} `json:"data"`
+}
+
+func retreiveClient(clientId string, roomId string) structs.Client{
+	room, err := structs.GetRoom(roomId)
+
+	if err != nil {
+		log.Println("no room", err)
+		return structs.Client{}
+	}
+
+	client, ok := room.Clients[clientId]
+
+	if !ok{
+		log.Println("client not found in room", err)
+		return structs.Client{}
+	}
+
+	return client
 }
 
 func HandleOffer(msg structs.IncomingMessage){
@@ -22,20 +41,9 @@ func HandleOffer(msg structs.IncomingMessage){
 	recipient := msg.To
 	offer := msg.Data
 
-	room, err := structs.GetRoom(roomId)
+	client := retreiveClient(recipient, roomId)
 
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	
-	client, ok := room.Clients[recipient]
-	if !ok {
-		fmt.Println("client not found in room")
-		return
-	}
-
-	outMsg := OutgoingOffer{
+	outMsg := OutgoingMessage{
 		Type: "offer",
 		To:   recipient,
 		From: senderId,
@@ -63,26 +71,43 @@ func HandleAnswer(msg structs.IncomingMessage){
 	recipient := msg.To
 	answer := msg.Data
 
-	room, err := structs.GetRoom(roomId)
+	client := retreiveClient(recipient, roomId)
 
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	
-	client, ok := room.Clients[recipient]
-	fmt.Println(client)
-	if !ok {
-		fmt.Println("client not found in room")
-		return
-	}
-
-	outMsg := OutgoingOffer{
+	outMsg := OutgoingMessage{
 		Type: "answer",
 		To:   recipient,
 		From: senderId,
 		Room: roomId,
 		Data: answer,
+	}
+
+	jsonMsg, err := json.Marshal(outMsg)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return
+	}
+
+	err = client.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+	if err != nil {
+		fmt.Println("Error sending message:", err)
+		return
+	}
+}
+
+func HandleIceCandidate(msg structs.IncomingMessage){
+	roomId := msg.Room
+	senderId := msg.From
+	recipient := msg.To
+	iceCandidateData := msg.Data
+
+	client := retreiveClient(recipient, roomId)
+
+	outMsg := OutgoingMessage{
+		Type: "iceCandidate",
+		To:   recipient,
+		From: senderId,
+		Room: roomId,
+		Data: iceCandidateData,
 	}
 
 	jsonMsg, err := json.Marshal(outMsg)

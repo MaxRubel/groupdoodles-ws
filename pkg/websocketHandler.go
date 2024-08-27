@@ -81,14 +81,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		// Handle the message based on its type
 		switch message.Type {
 		case "offer":
-			log.Println("received offer")
 			negotiations.HandleOffer(message)
 		case "answer":
-			log.Println("received answer")
 			negotiations.HandleAnswer(message)
 		case "iceCandidate":
-			fmt.Println("got some ice candidate data", message.Data)
-			// Handle action
+			negotiations.HandleIceCandidate(message)
 		default:
 			log.Printf("Received unknown message type: %s", message.Type)
 		}
