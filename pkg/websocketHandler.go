@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/MaxRubel/groupdoodles-ws/pkg/negotiations"
 	"github.com/MaxRubel/groupdoodles-ws/pkg/structs"
 	"github.com/gorilla/websocket"
 )
@@ -17,17 +18,6 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-}
-
-type InitialData struct {
-	Host     bool   `json:"host"`
-	RoomId   string `json:"roomId"`
-	ClientId string `json:"clientId"`
-}
-
-type RegularMessage struct {
-	Type    string `json:"type"`
-	Content string `json:"content"`
 }
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -47,12 +37,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("New connection: Host: %v, RoomId: %s, ClientId: %s", initialData.Host, initialData.RoomId, initialData.ClientId)
 
-	// Send a welcome message upon successful connection
-	welcomeMsg := []byte("You've successfully connected to the WebSocket server.")
-	if err := conn.WriteMessage(websocket.TextMessage, welcomeMsg); err != nil {
-		log.Println("Error sending welcome message:", err)
-		return
-	}
+	room, _ := structs.GetRoom(initialData.RoomId)
+	
+	structs.SendRoomAsJSON(conn, room)
 
 	cleanup := func() {
 		log.Printf("Connection closed for client %s in room %s", initialData.ClientId, initialData.RoomId)
@@ -77,16 +64,15 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	defer cleanup()
 
-	// Handle WebSocket connection
+
 	for {
-		messageType, p, err := conn.ReadMessage()
+		_, p, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
-		// Parse regular messages
-		var message RegularMessage
+		var message structs.IncomingMessage
 		if err := json.Unmarshal(p, &message); err != nil {
 			log.Println("Error parsing message:", err)
 			continue
@@ -94,27 +80,24 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// Handle the message based on its type
 		switch message.Type {
-		case "chat":
-			log.Printf("Received chat message: %s", message.Content)
-			// Handle chat message
-		case "action":
-			log.Printf("Received action: %s", message.Content)
+		case "offer":
+			log.Println("received offer")
+			negotiations.HandleOffer(message)
+		case "answer":
+			log.Println("received answer")
+			negotiations.HandleAnswer(message)
+		case "iceCandidate":
+			fmt.Println("got some ice candidate data", message.Data)
 			// Handle action
 		default:
 			log.Printf("Received unknown message type: %s", message.Type)
-		}
-
-		// Echo the message back (you can modify this behavior as needed)
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
 		}
 	}
 
 }
 
-func parseInitialData(r *http.Request, conn *websocket.Conn) (InitialData, error) {
-	var initialData InitialData
+func parseInitialData(r *http.Request, conn *websocket.Conn) (structs.InitialData, error) {
+	var initialData structs.InitialData
 
 	encodedData := r.URL.Query().Get("data")
 	if encodedData == "" {
