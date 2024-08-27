@@ -58,7 +58,6 @@ func HandleOffer(msg structs.IncomingMessage){
 	}
 
 	err = client.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
-	fmt.Println("sending response")
 	if err != nil {
 		fmt.Println("Error sending message:", err)
 		return
