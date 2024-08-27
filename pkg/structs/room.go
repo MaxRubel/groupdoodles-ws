@@ -3,7 +3,6 @@ package structs
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 
@@ -33,7 +32,7 @@ func (r *Room) AddClient(clientId string, ws *websocket.Conn) error {
 		Conn:     ws,
 	}
 	
-	fmt.Printf("added client %s to room %s \n", clientId, r.RoomId)
+	// fmt.Printf("added client %s to room %s \n", clientId, r.RoomId)
 	return nil
 }
 
@@ -47,7 +46,7 @@ func (r *Room) RemoveClient(clientId string) error {
 	
 	delete(r.Clients, clientId)
 
-	fmt.Printf("removed client %s from room %s \n", clientId, r.RoomId)
+	// fmt.Printf("removed client %s from room %s \n", clientId, r.RoomId)
 	return nil
 }
 
