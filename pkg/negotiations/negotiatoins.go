@@ -167,6 +167,5 @@ func BounceBack(conn *websocket.Conn){
 		return
 		}
 
-	fmt.Println("bouncing back!")
 	conn.WriteMessage(websocket.TextMessage, jsonMsg)
 }
