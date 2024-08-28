@@ -51,6 +51,11 @@ func (r *Room) RemoveClient(clientId string) error {
 }
 
 func SendRoomAsJSON(conn *websocket.Conn, room *Room) error {
+
+	if room == nil{
+		return errors.New("no room found to get json data from")
+	}
+
 	room.mu.RLock()
 	defer room.mu.RUnlock()
 

@@ -2,7 +2,6 @@ package structs
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 )
 
@@ -16,7 +15,6 @@ func init(){
 }
 
 func AddRoom(roomId string) *Room {
-	fmt.Printf("adding %s room to all rooms \n", roomId)
 
 	roomMutex.Lock()
 	defer roomMutex.Unlock()

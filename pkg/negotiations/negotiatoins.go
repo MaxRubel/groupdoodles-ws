@@ -2,6 +2,7 @@ package negotiations
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -120,4 +121,52 @@ func HandleIceCandidate(msg structs.IncomingMessage){
 		fmt.Println("Error sending message:", err)
 		return
 	}
+}
+
+func LeaveRoom(clientId string, roomId string) error{
+
+	room := structs.AllRooms[roomId]
+
+	if room == nil{
+		return errors.New("oops, room is nil")
+	}
+	room.RemoveClient(clientId)
+
+
+
+	for _, client := range room.Clients{
+		outMsg := OutgoingMessage{
+			Type: "someoneLeft",
+			To: client.ClientId,
+			From: clientId,
+			Room: roomId,
+			Data: nil,	
+		}
+
+		jsonMsg, err := json.Marshal(outMsg)
+		if err != nil {
+			fmt.Println("Error marshalling JSON:", err)
+			return errors.New("error unmarshaling json")
+		}
+		client.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+	}
+	return nil
+}
+
+func BounceBack(conn *websocket.Conn){
+	outMsg := OutgoingMessage{
+		Type: "bounceBack",
+		To: "",
+		From: "",
+		Room: "",
+		Data: nil,
+	}
+	jsonMsg, err := json.Marshal(outMsg)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return
+		}
+
+	fmt.Println("bouncing back!")
+	conn.WriteMessage(websocket.TextMessage, jsonMsg)
 }

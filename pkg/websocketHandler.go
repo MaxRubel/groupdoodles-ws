@@ -37,13 +37,18 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("New connection: Host: %v, RoomId: %s, ClientId: %s", initialData.Host, initialData.RoomId, initialData.ClientId)
 
-	room, _ := structs.GetRoom(initialData.RoomId)
+	room, err := structs.GetRoom(initialData.RoomId)
+	if err != nil{
+		negotiations.BounceBack(conn)
+	}
 	
 	structs.SendRoomAsJSON(conn, room)
 
-	cleanup := func() {
+
+		cleanup := func() {
 		log.Printf("Connection closed for client %s in room %s", initialData.ClientId, initialData.RoomId)
 		room, err := structs.GetRoom(initialData.RoomId)
+		negotiations.LeaveRoom(initialData.ClientId, initialData.RoomId)
 		
 		if err != nil {
 			fmt.Println(err)
@@ -63,7 +68,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer cleanup()
-
 
 	for {
 		_, p, err := conn.ReadMessage()
@@ -113,19 +117,10 @@ func parseInitialData(r *http.Request, conn *websocket.Conn) (structs.InitialDat
 
 	if initialData.Host{
 		structs.AddRoom(initialData.RoomId)
-		fmt.Println("host has joined")
-	} else {
-		fmt.Println("gues has joined")
-	}
-	
+	} 
 	room := structs.AllRooms[initialData.RoomId]
-	fmt.Println(room)
 	
-	err = room.AddClient(initialData.ClientId, conn)
-
-	if err != nil {
-		fmt.Println(err)
-	}
+	room.AddClient(initialData.ClientId, conn)
 
 	return initialData, nil
 }
