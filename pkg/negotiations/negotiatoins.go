@@ -10,15 +10,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type OutgoingMessage struct{
-	Type     string      `json:"type"`
-	To       string      `json:"to"`
-	From     string      `json:"from"`
-	Room     string      `json:"room"`
-	Data     interface{} `json:"data"`
+type OutgoingMessage struct {
+	Type string      `json:"type"`
+	To   string      `json:"to"`
+	From string      `json:"from"`
+	Room string      `json:"room"`
+	Data interface{} `json:"data"`
 }
 
-func retreiveClient(clientId string, roomId string) structs.Client{
+func retreiveClient(clientId string, roomId string) structs.Client {
 	room, err := structs.GetRoom(roomId)
 
 	if err != nil {
@@ -28,7 +28,7 @@ func retreiveClient(clientId string, roomId string) structs.Client{
 
 	client, ok := room.Clients[clientId]
 
-	if !ok{
+	if !ok {
 		log.Println("client not found in room", err)
 		return structs.Client{}
 	}
@@ -36,7 +36,7 @@ func retreiveClient(clientId string, roomId string) structs.Client{
 	return client
 }
 
-func HandleOffer(msg structs.IncomingMessage){
+func HandleOffer(msg structs.IncomingMessage) {
 	roomId := msg.Room
 	senderId := msg.From
 	recipient := msg.To
@@ -65,7 +65,7 @@ func HandleOffer(msg structs.IncomingMessage){
 	}
 }
 
-func HandleAnswer(msg structs.IncomingMessage){
+func HandleAnswer(msg structs.IncomingMessage) {
 	roomId := msg.Room
 	senderId := msg.From
 	recipient := msg.To
@@ -94,7 +94,7 @@ func HandleAnswer(msg structs.IncomingMessage){
 	}
 }
 
-func HandleIceCandidate(msg structs.IncomingMessage){
+func HandleIceCandidate(msg structs.IncomingMessage) {
 	roomId := msg.Room
 	senderId := msg.From
 	recipient := msg.To
@@ -123,24 +123,22 @@ func HandleIceCandidate(msg structs.IncomingMessage){
 	}
 }
 
-func LeaveRoom(clientId string, roomId string) error{
+func LeaveRoom(clientId string, roomId string) error {
 
 	room := structs.AllRooms[roomId]
 
-	if room == nil{
+	if room == nil {
 		return errors.New("oops, room is nil")
 	}
 	room.RemoveClient(clientId)
 
-
-
-	for _, client := range room.Clients{
+	for _, client := range room.Clients {
 		outMsg := OutgoingMessage{
 			Type: "someoneLeft",
-			To: client.ClientId,
+			To:   client.ClientId,
 			From: clientId,
 			Room: roomId,
-			Data: nil,	
+			Data: nil,
 		}
 
 		jsonMsg, err := json.Marshal(outMsg)
@@ -153,10 +151,10 @@ func LeaveRoom(clientId string, roomId string) error{
 	return nil
 }
 
-func BounceBack(conn *websocket.Conn){
+func BounceBack(conn *websocket.Conn) {
 	outMsg := OutgoingMessage{
 		Type: "bounceBack",
-		To: "",
+		To:   "",
 		From: "",
 		Room: "",
 		Data: nil,
@@ -165,7 +163,33 @@ func BounceBack(conn *websocket.Conn){
 	if err != nil {
 		fmt.Println("Error marshalling JSON:", err)
 		return
-		}
+	}
 
 	conn.WriteMessage(websocket.TextMessage, jsonMsg)
+}
+
+func SendInitialRoomData(msg structs.IncomingMessage) {
+	fmt.Println("got init room data")
+	roomId := msg.Room
+	senderId := msg.From
+	recipient := msg.To
+	newRoomData := msg.Data
+
+	client := retreiveClient(recipient, roomId)
+
+	outMsg := OutgoingMessage{
+		Type: "initalJoinData",
+		To:   client.ClientId,
+		From: senderId,
+		Room: roomId,
+		Data: newRoomData,
+	}
+
+	jsonMsg, err := json.Marshal(outMsg)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+	}
+	fmt.Println("sending new room data message")
+	client.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+
 }
