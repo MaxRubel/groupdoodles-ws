@@ -38,23 +38,22 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Printf("New connection: Host: %v, RoomId: %s, ClientId: %s", initialData.Host, initialData.RoomId, initialData.ClientId)
 
 	room, err := structs.GetRoom(initialData.RoomId)
-	if err != nil{
+	if err != nil {
 		negotiations.BounceBack(conn)
 	}
-	
+
 	structs.SendRoomAsJSON(conn, room)
 
-
-		cleanup := func() {
+	cleanup := func() {
 		log.Printf("Connection closed for client %s in room %s", initialData.ClientId, initialData.RoomId)
 		room, err := structs.GetRoom(initialData.RoomId)
 		negotiations.LeaveRoom(initialData.ClientId, initialData.RoomId)
-		
+
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		
+
 		if room != nil {
 			err := room.RemoveClient(initialData.ClientId)
 			if err != nil {
@@ -90,6 +89,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			negotiations.HandleAnswer(message)
 		case "iceCandidate":
 			negotiations.HandleIceCandidate(message)
+		case "initalJoinData":
+			negotiations.SendInitialRoomData(message)
 		default:
 			log.Printf("Received unknown message type: %s", message.Type)
 		}
@@ -115,11 +116,11 @@ func parseInitialData(r *http.Request, conn *websocket.Conn) (structs.InitialDat
 		return initialData, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
-	if initialData.Host{
+	if initialData.Host {
 		structs.AddRoom(initialData.RoomId)
-	} 
+	}
 	room := structs.AllRooms[initialData.RoomId]
-	
+
 	room.AddClient(initialData.ClientId, conn)
 
 	return initialData, nil
